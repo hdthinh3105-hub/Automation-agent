@@ -137,10 +137,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ─── Publish Docker images lên GHCR khi merge vào main ───
+  # Đã tắt: GHCR nay do repo Automation-agent (monorepo) sở hữu.
   publish-docker:
     name: Publish Docker (GHCR)
     needs: [lint, typecheck, test, build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

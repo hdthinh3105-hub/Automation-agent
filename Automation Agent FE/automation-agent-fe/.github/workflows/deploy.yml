@@ -5,7 +5,7 @@
 #   VERCEL_ORG_ID     — org id (`vercel whoami` / `vercel teams ls`)
 #   VERCEL_PROJECT_ID — project id
 # Và chạy `npx vercel link` một lần ở local (tạo `.vercel/project.json`) rồi commit.
-# Khi chưa có đủ secrets, workflow tự bỏ qua job (không fail).
+# Khi chưa có đủ secrets, workflow báo rõ để bạn bổ sung (không phải lỗi cú pháp).
 name: Deploy Vercel
 
 on:
@@ -14,16 +14,21 @@ on:
 jobs:
   deploy:
     name: Deploy production
-    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
+      - name: Check Vercel secrets
+        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
+        run: |
+          echo "Thieu it nhat 1 secret: VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID."
+          echo "Them trong Settings -> Secrets and variables -> Actions roi chay lai."
+          exit 0
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm

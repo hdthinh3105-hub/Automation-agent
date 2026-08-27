@@ -1,0 +1,27 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+.next/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Transformers.js model cache
+.transformers-cache/
+
+# OS
+.DS_Store
+Thumbs.db

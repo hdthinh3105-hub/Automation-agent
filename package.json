@@ -1,0 +1,25 @@
+{
+  "name": "automation-agent-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TRACK D - Automation Agent monorepo: Backend (NestJS) + Frontend (Next.js) + Docker Compose",
+  "scripts": {
+    "be:install": "npm --prefix \"Automatio Agent BE/automation-agent\" install",
+    "fe:install": "npm --prefix \"Automation Agent FE/automation-agent-fe\" install",
+    "install:all": "npm run be:install && npm run fe:install",
+    "be:lint": "npm --prefix \"Automatio Agent BE/automation-agent\" run lint:ci",
+    "be:typecheck": "npm --prefix \"Automatio Agent BE/automation-agent\" run typecheck",
+    "be:test": "npm --prefix \"Automatio Agent BE/automation-agent\" run test:ci",
+    "be:build": "npm --prefix \"Automatio Agent BE/automation-agent\" run build && npm --prefix \"Automatio Agent BE/automation-agent\" run build:worker",
+    "fe:lint": "npm --prefix \"Automation Agent FE/automation-agent-fe\" run lint",
+    "fe:typecheck": "npm --prefix \"Automation Agent FE/automation-agent-fe\" run typecheck",
+    "fe:build": "npm --prefix \"Automation Agent FE/automation-agent-fe\" run build",
+    "lint": "npm run be:lint && npm run fe:lint",
+    "typecheck": "npm run be:typecheck && npm run fe:typecheck",
+    "test": "npm run be:test",
+    "build": "npm run be:build && npm run fe:build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=100"
+  }
+}

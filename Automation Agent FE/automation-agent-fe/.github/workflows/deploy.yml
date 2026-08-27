@@ -1,0 +1,37 @@
+# Deploy chủ động (manual trigger) lên Vercel.
+#
+# Để dùng được job này, bật 3 secrets trong repo:
+#   VERCEL_TOKEN      — token từ https://vercel.com/account/tokens
+#   VERCEL_ORG_ID     — org id (`vercel whoami` / `vercel teams ls`)
+#   VERCEL_PROJECT_ID — project id
+# Và chạy `npx vercel link` một lần ở local (tạo `.vercel/project.json`) rồi commit.
+# Khi chưa có đủ secrets, workflow tự bỏ qua job (không fail).
+name: Deploy Vercel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy production
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Pull Vercel env (production)
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy (prebuilt)
+        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

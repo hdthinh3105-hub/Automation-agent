@@ -1,0 +1,332 @@
+# CI tổng cho MONOREPO (Backend + Frontend + Docker images).
+# GitHub Actions chỉ đọc workflow ở root repo — file này là workflow hoạt động.
+# Các workflow đặt trong thư mục con BE/FE được GIỮ để phục vụ khi tách repo,
+# GitHub monorepo sẽ bỏ qua chúng.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ───────────────────────── Backend ─────────────────────────
+  backend-lint:
+    name: BE · Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automatio Agent BE/automation-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate --schema=prisma/schema.prisma
+      - run: npm run lint:ci
+
+  backend-typecheck:
+    name: BE · Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automatio Agent BE/automation-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate --schema=prisma/schema.prisma
+      - run: npm run typecheck
+
+  backend-test:
+    name: BE · Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automatio Agent BE/automation-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate --schema=prisma/schema.prisma
+      - run: npm run test:ci
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: Automatio Agent BE/automation-agent/coverage/
+          retention-days: 14
+
+  backend-build:
+    name: BE · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automatio Agent BE/automation-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate --schema=prisma/schema.prisma
+      - run: npm run build
+      - run: npm run build:worker
+
+  # ───────────────────────── Frontend ─────────────────────────
+  frontend-lint:
+    name: FE · Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automation Agent FE/automation-agent-fe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  frontend-typecheck:
+    name: FE · Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automation Agent FE/automation-agent-fe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+
+  frontend-build:
+    name: FE · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automation Agent FE/automation-agent-fe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api' }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            Automation Agent FE/automation-agent-fe/.next/
+            Automation Agent FE/automation-agent-fe/package.json
+          retention-days: 7
+
+  # ─────────────────── Docker images (smoke) ───────────────────
+  docker-build:
+    name: Docker · Smoke build 3 images
+    needs: [backend-build, frontend-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: Automatio Agent BE/automation-agent
+          file: Dockerfile
+          push: false
+          tags: automation-agent:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build Worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: Automatio Agent BE/automation-agent
+          file: Dockerfile.worker
+          push: false
+          tags: automation-agent-worker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: Automation Agent FE/automation-agent-fe
+          file: Dockerfile
+          push: false
+          tags: automation-agent-frontend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────── Publish Docker images lên GHCR ───────────────
+  publish-docker:
+    name: Docker · Publish GHCR
+    needs:
+      - backend-lint
+      - backend-typecheck
+      - backend-test
+      - backend-build
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-build
+      - docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Metadata · API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/automation-agent
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Push · API
+        uses: docker/build-push-action@v6
+        with:
+          context: Automatio Agent BE/automation-agent
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Metadata · Worker
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/automation-agent-worker
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Push · Worker
+        uses: docker/build-push-action@v6
+        with:
+          context: Automatio Agent BE/automation-agent
+          file: Dockerfile.worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Metadata · Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/automation-agent-frontend
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Push · Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: Automation Agent FE/automation-agent-fe
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────── Deploy Frontend lên Vercel (tùy chọn) ───────────────
+  deploy-frontend:
+    name: Deploy · Vercel (manual)
+    if: ${{ github.event_name == 'workflow_dispatch' && secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+    needs: [frontend-lint, frontend-typecheck, frontend-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Automation Agent FE/automation-agent-fe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+      - run: npm ci
+      - name: Pull Vercel env (production)
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy (prebuilt)
+        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

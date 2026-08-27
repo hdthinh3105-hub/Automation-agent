@@ -1,0 +1,42 @@
+version: "3.9"
+
+# Chỉ chạy Postgres + Redis cho dev local.
+# API/Worker chạy bằng npm run start:dev
+
+services:
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: acs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_customer_support
+    ports:
+      - "5432:5432"
+    volumes:
+      - acs-postgres-data:/var/lib/postgresql/data
+      - ./postgres/init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: acs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - acs-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  acs-postgres-data:
+  acs-redis-data:

@@ -1,0 +1,427 @@
+// Prisma schema — cập nhật tới Phase 6 (Ngày 4: AI Workflow / Routing /
+// Escalation). Các phần trước (Identity, Customer/Ticket/Conversation/KB,
+// RAG Phase 5) giữ nguyên, chỉ bổ sung PromptLog + Escalation + quan hệ.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(AGENT)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  refreshTokens       RefreshToken[]
+  assignedTickets     Ticket[]
+  assignedEscalations Escalation[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// Phase 3+4 — Customer / Ticket / Conversation / Knowledge Base
+// ============================================================
+
+enum Channel {
+  WEB
+  EMAIL
+  CHAT_APP
+  INTERNAL
+}
+
+enum TicketStatus {
+  NEW
+  CLASSIFIED
+  WAITING_CUSTOMER
+  ANSWERED
+  ESCALATED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MessageSender {
+  CUSTOMER
+  AGENT
+  AI
+}
+
+enum TurnRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum DocumentSourceType {
+  FILE
+  URL
+  TEXT
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String?
+  phone       String?
+  metadata    Json?
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+
+  tickets Ticket[]
+
+  @@map("customers")
+}
+
+model Ticket {
+  id               String         @id @default(uuid())
+  customerId       String         @map("customer_id")
+  channel          Channel
+  subject          String
+  status           TicketStatus   @default(NEW)
+  category         String?
+  priority         PriorityLevel?
+  confidenceScore  Float?         @map("confidence_score")
+  assignedAgentId  String?        @map("assigned_agent_id")
+  isSpam           Boolean        @default(false) @map("is_spam")
+  isDuplicateOf    String?        @map("is_duplicate_of")
+  missingInfoFlags String[]       @default([]) @map("missing_info_flags")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  resolvedAt       DateTime?      @map("resolved_at")
+
+  customer      Customer              @relation(fields: [customerId], references: [id])
+  assignedAgent User?                 @relation(fields: [assignedAgentId], references: [id])
+  duplicateOf   Ticket?               @relation("TicketDuplicate", fields: [isDuplicateOf], references: [id])
+  duplicates    Ticket[]              @relation("TicketDuplicate")
+  messages      TicketMessage[]
+  statusHistory TicketStatusHistory[]
+  conversation  Conversation?
+  escalations   Escalation[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([assignedAgentId])
+  @@index([createdAt])
+  @@index([status, priority])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id              String        @id @default(uuid())
+  ticketId        String        @map("ticket_id")
+  sender          MessageSender
+  content         String
+  attachments     String[]      @default([])
+  channelMetadata Json?         @map("channel_metadata")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model TicketStatusHistory {
+  id         String       @id @default(uuid())
+  ticketId   String       @map("ticket_id")
+  fromStatus TicketStatus @map("from_status")
+  toStatus   TicketStatus @map("to_status")
+  changedBy  String       @map("changed_by")
+  reason     String?
+  changedAt  DateTime     @default(now()) @map("changed_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId, changedAt])
+  @@map("ticket_status_history")
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  ticketId       String   @unique @map("ticket_id")
+  summary        String?
+  turnCount      Int      @default(0) @map("turn_count")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+
+  ticket Ticket             @relation(fields: [ticketId], references: [id])
+  turns  ConversationTurn[]
+
+  @@map("conversations")
+}
+
+model ConversationTurn {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  role           TurnRole
+  content        String
+  tokensEstimate Int      @default(0) @map("tokens_estimate")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_turns")
+}
+
+model KnowledgeDocument {
+  id         String             @id @default(uuid())
+  title      String
+  sourceType DocumentSourceType @map("source_type")
+  filePath   String?            @map("file_path")
+  status     DocumentStatus     @default(PENDING)
+  version    Int                @default(1)
+  tags       String[]           @default([])
+  uploadedBy String             @map("uploaded_by")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  deletedAt  DateTime?          @map("deleted_at")
+
+  chunks KnowledgeChunk[]
+
+  @@index([status])
+  @@index([uploadedBy])
+  @@map("knowledge_documents")
+}
+
+// ============================================================
+// Phase 5 — RAG Pipeline
+// ============================================================
+
+model KnowledgeChunk {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  content    String
+  chunkIndex Int      @map("chunk_index")
+  tokenCount Int      @map("token_count")
+  section    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document  KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  embedding ChunkEmbedding?
+
+  @@index([documentId])
+  @@map("knowledge_chunks")
+}
+
+model ChunkEmbedding {
+  chunkId        String                 @id @map("chunk_id")
+  vector         Unsupported("vector")?
+  embeddingModel String                 @map("embedding_model")
+  dimensions     Int
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  chunk KnowledgeChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@map("chunk_embeddings")
+}
+
+// ============================================================
+// Phase 6 — AI Workflow / Routing / Escalation (Ngày 4, TDD Mục 5.7,
+// 5.9, 10.2). PromptLog KHÔNG khai báo @relation với Ticket (ticketId
+// là plain field, không ràng buộc FK) — chấp nhận đánh đổi để bảng log
+// không phụ thuộc vòng đời Ticket (TDD Mục 10.2: "ticket_id nullable —
+// có thể log cho conversation-level summarize").
+// ============================================================
+
+enum EscalationReason {
+  LOW_CONFIDENCE
+  EXPLICIT_REQUEST
+  POLICY_RULE
+  COMPLEX_CASE
+}
+
+enum EscalationStatus {
+  PENDING
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model Escalation {
+  id              String           @id @default(uuid())
+  ticketId        String           @map("ticket_id")
+  reason          EscalationReason
+  assignedAgentId String?          @map("assigned_agent_id")
+  slaDeadline     DateTime         @map("sla_deadline")
+  status          EscalationStatus @default(PENDING)
+  resolutionNote  String?          @map("resolution_note")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  acknowledgedAt  DateTime?        @map("acknowledged_at")
+  resolvedAt      DateTime?        @map("resolved_at")
+
+  ticket        Ticket @relation(fields: [ticketId], references: [id])
+  assignedAgent User?  @relation(fields: [assignedAgentId], references: [id])
+
+  @@index([status])
+  @@index([assignedAgentId])
+  @@index([slaDeadline])
+  @@index([ticketId])
+  @@map("escalations")
+}
+
+model PromptLog {
+  id                     String   @id @default(uuid())
+  ticketId               String?  @map("ticket_id")
+  useCase                String   @map("use_case")
+  provider               String
+  model                  String
+  promptTokens           Int?     @map("prompt_tokens")
+  completionTokens       Int?     @map("completion_tokens")
+  latencyMs              Int      @map("latency_ms")
+  requestPayloadRedacted String?  @map("request_payload_redacted")
+  responseRaw            String?  @map("response_raw")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@index([useCase])
+  @@index([createdAt])
+  @@map("prompt_logs")
+}
+
+enum ActorType {
+  USER
+  AI
+  SYSTEM
+}
+
+model AuditLog {
+  id           String    @id @default(uuid())
+  actorType    ActorType @map("actor_type")
+  actorId      String?   @map("actor_id")
+  action       String
+  resourceType String    @map("resource_type")
+  resourceId   String    @map("resource_id")
+  changesJson  Json?     @map("changes_json")
+  ipAddress    String?   @map("ip_address")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum NotificationChannel {
+  EMAIL
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model NotificationLog {
+  id          String              @id @default(uuid())
+  type        String
+  recipient   String
+  channel     NotificationChannel
+  status      NotificationStatus  @default(QUEUED)
+  payload     Json?
+  errorReason String?             @map("error_reason")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  sentAt      DateTime?           @map("sent_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("notification_logs")
+}
+
+model DailyMetricSnapshot {
+  date              DateTime @id
+  totalTickets      Int      @default(0) @map("total_tickets")
+  autoResolvedCount Int      @default(0) @map("auto_resolved_count")
+  escalatedCount    Int      @default(0) @map("escalated_count")
+  avgConfidence     Float?   @map("avg_confidence")
+  avgResponseTimeMs Int?     @map("avg_response_time_ms")
+  byCategory        Json?    @map("by_category")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("daily_metric_snapshots")
+}
+
+// ============================================================
+// Admin Module — Routing Rules & System Settings
+// ============================================================
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("categories")
+}
+
+model RoutingRule {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  priority    Int      @default(0)
+  conditions  Json
+  action      String
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@index([priority])
+  @@map("routing_rules")
+}
+
+model SystemSetting {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value      Json
+  category   String   @default("general")
+  label      String?
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@map("system_settings")
+}

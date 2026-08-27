@@ -1,0 +1,69 @@
+version: 2
+updates:
+  # Backend (NestJS) npm dependencies
+  - package-ecosystem: npm
+    directory: "/Automatio Agent BE/automation-agent"
+    schedule:
+      interval: weekly
+      day: saturday
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      nestjs:
+        patterns: ["@nestjs/*", "@nestjs/**"]
+      prisma:
+        patterns: ["prisma", "@prisma/client"]
+      typescript:
+        patterns: ["typescript", "ts-jest", "@types/*"]
+      eslint-prettier:
+        patterns: ["eslint", "eslint-*", "@typescript-eslint/*", "prettier", "prettier-*"]
+      redis-queue:
+        patterns: ["bullmq", "@nestjs/bullmq", "ioredis"]
+    ignore:
+      # Embedding model runtime tự quản, tránh bump giữa chừng làm vỡ dimension/mean-pooling
+      - dependency-name: "@xenova/transformers"
+
+  # Frontend (Next.js) npm dependencies
+  - package-ecosystem: npm
+    directory: "/Automation Agent FE/automation-agent-fe"
+    schedule:
+      interval: weekly
+      day: saturday
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      nextjs:
+        patterns: ["next", "eslint-config-next"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      typescript:
+        patterns: ["typescript", "@types/*"]
+      tailwind:
+        patterns: ["tailwindcss", "postcss", "autoprefixer"]
+
+  # Docker images backend (Dockerfile + Dockerfile.worker)
+  - package-ecosystem: docker
+    directory: "/Automatio Agent BE/automation-agent"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # Docker images frontend
+  - package-ecosystem: docker
+    directory: "/Automation Agent FE/automation-agent-fe"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

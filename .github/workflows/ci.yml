@@ -203,7 +203,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automatio Agent BE/automation-agent
-          file: Dockerfile
+          file: Automatio Agent BE/automation-agent/Dockerfile
           push: false
           tags: automation-agent:ci
           cache-from: type=gha
@@ -212,7 +212,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automatio Agent BE/automation-agent
-          file: Dockerfile.worker
+          file: Automatio Agent BE/automation-agent/Dockerfile.worker
           push: false
           tags: automation-agent-worker:ci
           cache-from: type=gha
@@ -221,7 +221,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automation Agent FE/automation-agent-fe
-          file: Dockerfile
+          file: Automation Agent FE/automation-agent-fe/Dockerfile
           push: false
           tags: automation-agent-frontend:ci
           cache-from: type=gha
@@ -266,7 +266,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automatio Agent BE/automation-agent
-          file: Dockerfile
+          file: Automatio Agent BE/automation-agent/Dockerfile
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
@@ -284,7 +284,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automatio Agent BE/automation-agent
-          file: Dockerfile.worker
+          file: Automatio Agent BE/automation-agent/Dockerfile.worker
           push: true
           tags: ${{ steps.meta-worker.outputs.tags }}
           labels: ${{ steps.meta-worker.outputs.labels }}
@@ -302,7 +302,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: Automation Agent FE/automation-agent-fe
-          file: Dockerfile
+          file: Automation Agent FE/automation-agent-fe/Dockerfile
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}

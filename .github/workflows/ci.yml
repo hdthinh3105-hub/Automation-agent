@@ -41,14 +41,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automatio Agent BE/automation-agent
+        working-directory: backend/automation-agent
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+          cache-dependency-path: backend/automation-agent/package-lock.json
       - run: npm ci
       - run: npx prisma generate --schema=prisma/schema.prisma
       - run: npm run lint:ci
@@ -61,14 +61,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automatio Agent BE/automation-agent
+        working-directory: backend/automation-agent
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+          cache-dependency-path: backend/automation-agent/package-lock.json
       - run: npm ci
       - run: npx prisma generate --schema=prisma/schema.prisma
       - run: npm run typecheck
@@ -81,14 +81,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automatio Agent BE/automation-agent
+        working-directory: backend/automation-agent
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+          cache-dependency-path: backend/automation-agent/package-lock.json
       - run: npm ci
       - run: npx prisma generate --schema=prisma/schema.prisma
       - run: npm run test:ci
@@ -96,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: backend-coverage
-          path: Automatio Agent BE/automation-agent/coverage/
+          path: backend/automation-agent/coverage/
           retention-days: 14
 
   backend-build:
@@ -107,14 +107,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automatio Agent BE/automation-agent
+        working-directory: backend/automation-agent
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automatio Agent BE/automation-agent/package-lock.json
+          cache-dependency-path: backend/automation-agent/package-lock.json
       - run: npm ci
       - run: npx prisma generate --schema=prisma/schema.prisma
       - run: npm run build
@@ -129,14 +129,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automation Agent FE/automation-agent-fe
+        working-directory: frontend/automation-agent-fe
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+          cache-dependency-path: frontend/automation-agent-fe/package-lock.json
       - run: npm ci
       - run: npm run lint
 
@@ -148,14 +148,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automation Agent FE/automation-agent-fe
+        working-directory: frontend/automation-agent-fe
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+          cache-dependency-path: frontend/automation-agent-fe/package-lock.json
       - run: npm ci
       - run: npm run typecheck
 
@@ -167,14 +167,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automation Agent FE/automation-agent-fe
+        working-directory: frontend/automation-agent-fe
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+          cache-dependency-path: frontend/automation-agent-fe/package-lock.json
       - run: npm ci
       - run: npm run build
         env:
@@ -184,8 +184,8 @@ jobs:
         with:
           name: frontend-build
           path: |
-            Automation Agent FE/automation-agent-fe/.next/
-            Automation Agent FE/automation-agent-fe/package.json
+            frontend/automation-agent-fe/.next/
+            frontend/automation-agent-fe/package.json
           retention-days: 7
 
   # ─────────────────── Docker images (smoke) ───────────────────
@@ -202,8 +202,8 @@ jobs:
       - name: Build API image
         uses: docker/build-push-action@v6
         with:
-          context: Automatio Agent BE/automation-agent
-          file: Automatio Agent BE/automation-agent/Dockerfile
+          context: backend/automation-agent
+          file: backend/automation-agent/Dockerfile
           push: false
           tags: automation-agent:ci
           cache-from: type=gha
@@ -211,8 +211,8 @@ jobs:
       - name: Build Worker image
         uses: docker/build-push-action@v6
         with:
-          context: Automatio Agent BE/automation-agent
-          file: Automatio Agent BE/automation-agent/Dockerfile.worker
+          context: backend/automation-agent
+          file: backend/automation-agent/Dockerfile.worker
           push: false
           tags: automation-agent-worker:ci
           cache-from: type=gha
@@ -220,8 +220,8 @@ jobs:
       - name: Build Frontend image
         uses: docker/build-push-action@v6
         with:
-          context: Automation Agent FE/automation-agent-fe
-          file: Automation Agent FE/automation-agent-fe/Dockerfile
+          context: frontend/automation-agent-fe
+          file: frontend/automation-agent-fe/Dockerfile
           push: false
           tags: automation-agent-frontend:ci
           cache-from: type=gha
@@ -265,8 +265,8 @@ jobs:
       - name: Push · API
         uses: docker/build-push-action@v6
         with:
-          context: Automatio Agent BE/automation-agent
-          file: Automatio Agent BE/automation-agent/Dockerfile
+          context: backend/automation-agent
+          file: backend/automation-agent/Dockerfile
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
@@ -283,8 +283,8 @@ jobs:
       - name: Push · Worker
         uses: docker/build-push-action@v6
         with:
-          context: Automatio Agent BE/automation-agent
-          file: Automatio Agent BE/automation-agent/Dockerfile.worker
+          context: backend/automation-agent
+          file: backend/automation-agent/Dockerfile.worker
           push: true
           tags: ${{ steps.meta-worker.outputs.tags }}
           labels: ${{ steps.meta-worker.outputs.labels }}
@@ -301,8 +301,8 @@ jobs:
       - name: Push · Frontend
         uses: docker/build-push-action@v6
         with:
-          context: Automation Agent FE/automation-agent-fe
-          file: Automation Agent FE/automation-agent-fe/Dockerfile
+          context: frontend/automation-agent-fe
+          file: frontend/automation-agent-fe/Dockerfile
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
@@ -320,7 +320,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: Automation Agent FE/automation-agent-fe
+        working-directory: frontend/automation-agent-fe
     steps:
       - name: Check Vercel secrets
         env:
@@ -339,7 +339,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: Automation Agent FE/automation-agent-fe/package-lock.json
+          cache-dependency-path: frontend/automation-agent-fe/package-lock.json
       - run: npm ci
       - name: Pull Vercel env (production)
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}

@@ -2,7 +2,7 @@ version: 2
 updates:
   # Backend (NestJS) npm dependencies
   - package-ecosystem: npm
-    directory: "/Automatio Agent BE/automation-agent"
+    directory: "/backend/automation-agent"
     schedule:
       interval: weekly
       day: saturday
@@ -22,12 +22,12 @@ updates:
       redis-queue:
         patterns: ["bullmq", "@nestjs/bullmq", "ioredis"]
     ignore:
-      # Embedding model runtime tự quản, tránh bump giữa chừng làm vỡ dimension/mean-pooling
+      # Embedding model runtime tá»± quáº£n, trÃ¡nh bump giá»¯a chá»«ng lÃ m vá»¡ dimension/mean-pooling
       - dependency-name: "@xenova/transformers"
 
   # Frontend (Next.js) npm dependencies
   - package-ecosystem: npm
-    directory: "/Automation Agent FE/automation-agent-fe"
+    directory: "/frontend/automation-agent-fe"
     schedule:
       interval: weekly
       day: saturday
@@ -47,14 +47,14 @@ updates:
 
   # Docker images backend (Dockerfile + Dockerfile.worker)
   - package-ecosystem: docker
-    directory: "/Automatio Agent BE/automation-agent"
+    directory: "/backend/automation-agent"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
 
   # Docker images frontend
   - package-ecosystem: docker
-    directory: "/Automation Agent FE/automation-agent-fe"
+    directory: "/frontend/automation-agent-fe"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

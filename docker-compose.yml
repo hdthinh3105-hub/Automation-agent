@@ -1,5 +1,5 @@
 services:
-  # ── Infrastructure ──
+  # â”€â”€ Infrastructure â”€â”€
   postgres:
     image: ankane/pgvector:v0.5.1
     container_name: acs-postgres
@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - acs-postgres-data:/var/lib/postgresql/data
-      - ./Automatio Agent BE/automation-agent/docker/postgres/init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql:ro
+      - ./backend/automation-agent/docker/postgres/init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -33,10 +33,10 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Backend API ──
+  # â”€â”€ Backend API â”€â”€
   api:
     build:
-      context: ./Automatio Agent BE/automation-agent
+      context: ./backend/automation-agent
       dockerfile: Dockerfile
     container_name: acs-api
     restart: unless-stopped
@@ -61,10 +61,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Backend Worker (BullMQ) ──
+  # â”€â”€ Backend Worker (BullMQ) â”€â”€
   worker:
     build:
-      context: ./Automatio Agent BE/automation-agent
+      context: ./backend/automation-agent
       dockerfile: Dockerfile.worker
     container_name: acs-worker
     restart: unless-stopped
@@ -83,10 +83,10 @@ services:
       - acs-storage:/app/storage
       - acs-transformers-cache:/app/.transformers-cache
 
-  # ── Frontend ──
+  # â”€â”€ Frontend â”€â”€
   frontend:
     build:
-      context: ./Automation Agent FE/automation-agent-fe
+      context: ./frontend/automation-agent-fe
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost:3000/api

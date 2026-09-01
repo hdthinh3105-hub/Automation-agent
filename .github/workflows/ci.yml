@@ -43,8 +43,8 @@ jobs:
       run:
         working-directory: backend/automation-agent
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -63,8 +63,8 @@ jobs:
       run:
         working-directory: backend/automation-agent
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -83,8 +83,8 @@ jobs:
       run:
         working-directory: backend/automation-agent
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -93,7 +93,7 @@ jobs:
       - run: npx prisma generate --schema=prisma/schema.prisma
       - run: npm run test:ci
       - if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: backend/automation-agent/coverage/
@@ -109,8 +109,8 @@ jobs:
       run:
         working-directory: backend/automation-agent
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -131,8 +131,8 @@ jobs:
       run:
         working-directory: frontend/automation-agent-fe
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -150,8 +150,8 @@ jobs:
       run:
         working-directory: frontend/automation-agent-fe
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -169,8 +169,8 @@ jobs:
       run:
         working-directory: frontend/automation-agent-fe
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -180,7 +180,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api' }}
       - if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-build
           path: |
@@ -197,10 +197,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build API image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend/automation-agent
           file: backend/automation-agent/Dockerfile
@@ -209,7 +209,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build Worker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend/automation-agent
           file: backend/automation-agent/Dockerfile.worker
@@ -218,7 +218,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build Frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: frontend/automation-agent-fe
           file: frontend/automation-agent-fe/Dockerfile
@@ -246,24 +246,24 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Metadata · API
         id: meta-api
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/automation-agent
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Push · API
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend/automation-agent
           file: backend/automation-agent/Dockerfile
@@ -274,14 +274,14 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Metadata · Worker
         id: meta-worker
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/automation-agent-worker
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Push · Worker
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend/automation-agent
           file: backend/automation-agent/Dockerfile.worker
@@ -292,14 +292,14 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Metadata · Frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/automation-agent-frontend
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Push · Frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: frontend/automation-agent-fe
           file: frontend/automation-agent-fe/Dockerfile
@@ -334,8 +334,8 @@ jobs:
             exit 0
           fi
           echo "Secrets OK"
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
